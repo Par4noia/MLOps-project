@@ -2,12 +2,16 @@ import argparse
 from pathlib import Path
 import pandas as pd
 
-from config import RAW_FILE, PROCESSED_FILE, QUALITY_REPORT, BATCH_SIZE, MODEL_DIR
+from config import RAW_FILE, PROCESSED_FILE, QUALITY_REPORT, BATCH_SIZE, MODEL_DIR, REPORT_DIR
 from src.collection import stream_batches, append_raw
 from src.analysis import data_quality, make_target, clean_data, save_quality_report
 from src.preparation import preprocess_data, split_by_time
 from src.training import train_decision_tree, train_neural_net, evaluate_model, save_model
 from src.serving import process_inference_file
+from src.summary import generate_summary_report
+
+# Файл для сохранения метрик модели
+MODEL_METRICS_FILE = REPORT_DIR / "model_metrics.json"
 
 
 def handle_update():
@@ -37,7 +41,19 @@ def handle_update():
     nn_metrics = evaluate_model(nn_model, X_test, y_test)
     print(f"Decision Tree: acc={dt_metrics['accuracy']:.3f}, f1={dt_metrics['f1_score']:.3f}")
     print(f"Neural Net: acc={nn_metrics['accuracy']:.3f}, f1={nn_metrics['f1_score']:.3f}")
+
     best_model = dt_model if dt_metrics['f1_score'] > nn_metrics['f1_score'] else nn_model
+    best_metrics = dt_metrics if dt_metrics['f1_score'] > nn_metrics['f1_score'] else nn_metrics
+    best_params = {
+        "model_type": "DecisionTree" if dt_metrics['f1_score'] > nn_metrics['f1_score'] else "NeuralNetwork",
+        "dt_params": dt_model.get_params(),
+        "nn_params": nn_model.get_params()
+    }
+
+    import json
+    with open(MODEL_METRICS_FILE, 'w') as f:
+        json.dump({"metrics": best_metrics, "params": best_params}, f, indent=2)
+
     model_path = MODEL_DIR / "best_model.pkl"
     save_model(best_model, model_path)
     print(f"best model saved to {model_path}")
@@ -59,8 +75,25 @@ def handle_inference(file):
 
 
 def handle_summary():
-    print("summary mode: not implemented yet")
-    return None
+    import json
+    model_metrics = {}
+    model_params = {}
+
+    if MODEL_METRICS_FILE.exists():
+        with open(MODEL_METRICS_FILE, 'r') as f:
+            data = json.load(f)
+            model_metrics = data.get("metrics", {})
+            model_params = data.get("params", {})
+
+    summary_path = REPORT_DIR / "summary_report.json"
+    report_path = generate_summary_report(
+        quality_path=QUALITY_REPORT,
+        model_metrics=model_metrics,
+        model_params=model_params,
+        output_path=summary_path
+    )
+    print(f"summary report saved to {report_path}")
+    return report_path
 
 
 def main():
