@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+logs/
+data/processed/
+models/versions/*.pkl
+
+# Keep essential project files
+!README.md

@@ -3,12 +3,13 @@ import json
 from pathlib import Path
 from datetime import datetime
 
-def generate_summary_report(quality_path, model_metrics, model_params, output_path):
+def generate_summary_report(quality_path, model_metrics, model_params, versions_info, output_path):
     """
     Генерирует отчет summary с информацией о:
     - Качестве данных
     - Метриках модели
     - Гиперпараметрах
+    - Версиях моделей
     - Производительности
     """
     report = {
@@ -16,6 +17,7 @@ def generate_summary_report(quality_path, model_metrics, model_params, output_pa
         "data_quality": {},
         "model_metrics": model_metrics,
         "model_params": model_params,
+        "model_versions": versions_info,
         "performance": {}
     }
 

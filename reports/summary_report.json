@@ -1,30 +1,57 @@
 {
-  "timestamp": "2026-03-22T16:44:09.608915",
+  "timestamp": "2026-03-22T17:00:27.774485",
   "data_quality": {
-    "rows": 508499,
+    "rows": 1000,
     "cols": 16,
-    "missing_total": 587746,
-    "duplicates": 78,
+    "missing_total": 1231,
+    "duplicates": 0,
     "missing_SEX": 0,
     "missing_INSR_BEGIN": 0,
     "missing_INSR_END": 0,
-    "missing_EFFECTIVE_YR": 3,
+    "missing_EFFECTIVE_YR": 0,
     "missing_INSR_TYPE": 0,
     "missing_INSURED_VALUE": 0,
-    "missing_PREMIUM": 13,
+    "missing_PREMIUM": 0,
     "missing_OBJECT_ID": 0,
-    "missing_PROD_YEAR": 63,
-    "missing_SEATS_NUM": 95,
-    "missing_CARRYING_CAPACITY": 116834,
+    "missing_PROD_YEAR": 0,
+    "missing_SEATS_NUM": 0,
+    "missing_CARRYING_CAPACITY": 347,
     "missing_TYPE_VEHICLE": 0,
-    "missing_CCM_TON": 6,
-    "missing_MAKE": 5,
+    "missing_CCM_TON": 0,
+    "missing_MAKE": 0,
     "missing_USAGE": 0,
-    "missing_CLAIM_PAID": 470727
+    "missing_CLAIM_PAID": 884
   },
   "model_metrics": {
-    "accuracy": 0.9539165068594188,
-    "f1_score": 0.9314278066212037
+    "accuracy": 0.94,
+    "f1_score": 0.9109278350515464,
+    "classification_report": {
+      "0": {
+        "precision": 0.94,
+        "recall": 1.0,
+        "f1-score": 0.9690721649484536,
+        "support": 188.0
+      },
+      "1": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1-score": 0.0,
+        "support": 12.0
+      },
+      "accuracy": 0.94,
+      "macro avg": {
+        "precision": 0.47,
+        "recall": 0.5,
+        "f1-score": 0.4845360824742268,
+        "support": 200.0
+      },
+      "weighted avg": {
+        "precision": 0.8835999999999999,
+        "recall": 0.94,
+        "f1-score": 0.9109278350515464,
+        "support": 200.0
+      }
+    }
   },
   "model_params": {
     "model_type": "NeuralNetwork",
@@ -52,13 +79,12 @@
       "early_stopping": false,
       "epsilon": 1e-08,
       "hidden_layer_sizes": [
-        50,
-        25
+        10
       ],
       "learning_rate": "constant",
       "learning_rate_init": 0.001,
       "max_fun": 15000,
-      "max_iter": 500,
+      "max_iter": 100,
       "momentum": 0.9,
       "n_iter_no_change": 10,
       "nesterovs_momentum": true,
@@ -70,6 +96,61 @@
       "validation_fraction": 0.1,
       "verbose": false,
       "warm_start": false
+    },
+    "cv_results": {
+      "mean_accuracy": 0.8683333333333333,
+      "std_accuracy": 0.019293061504650395,
+      "mean_f1": 0.8072529564205452,
+      "std_f1": 0.027595096776505925,
+      "fold_scores": [
+        {
+          "accuracy": 0.895,
+          "f1_score": 0.8454089709762533
+        },
+        {
+          "accuracy": 0.85,
+          "f1_score": 0.7810810810810811
+        },
+        {
+          "accuracy": 0.86,
+          "f1_score": 0.795268817204301
+        }
+      ]
+    }
+  },
+  "model_versions": {
+    "total_versions": 1,
+    "latest_version": "unknown",
+    "latest_metrics": {
+      "accuracy": 0.94,
+      "f1_score": 0.9109278350515464,
+      "classification_report": {
+        "0": {
+          "precision": 0.94,
+          "recall": 1.0,
+          "f1-score": 0.9690721649484536,
+          "support": 188.0
+        },
+        "1": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 12.0
+        },
+        "accuracy": 0.94,
+        "macro avg": {
+          "precision": 0.47,
+          "recall": 0.5,
+          "f1-score": 0.4845360824742268,
+          "support": 200.0
+        },
+        "weighted avg": {
+          "precision": 0.8835999999999999,
+          "recall": 0.94,
+          "f1-score": 0.9109278350515464,
+          "support": 200.0
+        }
+      }
     }
   },
   "performance": {
