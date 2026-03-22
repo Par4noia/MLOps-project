@@ -1,17 +1,25 @@
 import argparse
 from pathlib import Path
+import pandas as pd
 
-from config import DATA_FILE, RAW_FILE, BATCH_SIZE
+from config import RAW_FILE, PROCESSED_FILE, QUALITY_REPORT, BATCH_SIZE
 from src.collection import stream_batches, append_raw
+from src.analysis import data_quality, clean_data, save_quality_report
 
 
 def handle_update():
-    if not DATA_FILE.exists():
-        print(f"data file not found: {DATA_FILE}")
-        return False
-    for batch in stream_batches(DATA_FILE, BATCH_SIZE):
-        append_raw(batch, RAW_FILE)
-    print(f"update done, raw data at {RAW_FILE}")
+    from config import DATA_FILE
+    if not RAW_FILE.exists():
+        print(f"raw file not found, collecting data...")
+        for batch in stream_batches(DATA_FILE, BATCH_SIZE):
+            append_raw(batch, RAW_FILE)
+    df = pd.read_csv(RAW_FILE)
+    quality = data_quality(df)
+    save_quality_report(quality, QUALITY_REPORT)
+    df_clean = clean_data(df)
+    df_clean.to_csv(PROCESSED_FILE, index=False)
+    print(f"processed data saved to {PROCESSED_FILE}")
+    print(f"quality report saved to {QUALITY_REPORT}")
     return True
 
 

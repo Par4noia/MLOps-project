@@ -14,4 +14,6 @@ REPORT_DIR.mkdir(parents=True, exist_ok=True)
 
 DATA_FILE = DATA_DIR / "insurance.csv"
 RAW_FILE = RAW_DIR / "insurance_raw.csv"
-BATCH_SIZE = 500
+PROCESSED_FILE = PROCESSED_DIR / "insurance_processed.csv"
+QUALITY_REPORT = REPORT_DIR / "quality_report.csv"
+BATCH_SIZE = 1000
