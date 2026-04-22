@@ -1,5 +1,7 @@
 import argparse
 from pathlib import Path
+import json
+from datetime import datetime, timezone
 import pandas as pd
 
 from config import RAW_FILE, PROCESSED_FILE, QUALITY_REPORT, BATCH_SIZE, MODEL_DIR, REPORT_DIR, VERSIONS_DIR, VALIDATION_REPORT
@@ -12,6 +14,49 @@ from src.serving import process_inference_file
 from src.summary import generate_summary_report
 
 MODEL_METRICS_FILE = REPORT_DIR / "model_metrics.json"
+INCREMENTAL_MODEL_FILE = MODEL_DIR / "serving" / "incremental_model.pkl"
+COLLECTOR_STATE_FILE = Path("data") / "metadata" / "collector_state.json"
+
+
+def _load_collector_state():
+    try:
+        if COLLECTOR_STATE_FILE.exists():
+            return json.loads(COLLECTOR_STATE_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    return {"next_batch_index": 0, "run_count": 0}
+
+
+def _save_collector_state(state: dict):
+    COLLECTOR_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    COLLECTOR_STATE_FILE.write_text(json.dumps(state, indent=2), encoding="utf-8")
+
+
+def _get_batch_by_index(data_file: Path, batch_size: int, batch_index: int):
+    for idx, batch in enumerate(stream_batches(data_file, batch_size)):
+        if idx == batch_index:
+            return batch
+    return None
+
+
+def _prepare_incremental_xy(batch: pd.DataFrame):
+    df = make_target(batch)
+    df = clean_data(df)
+
+    drop_cols = []
+    for c in ["CLAIM_PAID", "INSR_BEGIN", "INSR_END", "OBJECT_ID"]:
+        if c in df.columns:
+            drop_cols.append(c)
+
+    y = df["target"].astype(int)
+    X = df.drop(columns=["target"] + drop_cols, errors="ignore")
+
+    if "EFFECTIVE_YR" in X.columns:
+        X["EFFECTIVE_YR"] = pd.to_numeric(X["EFFECTIVE_YR"], errors="coerce")
+        X["EFFECTIVE_YR"] = X["EFFECTIVE_YR"].fillna(X["EFFECTIVE_YR"].median())
+
+    X = X.select_dtypes(include=["number", "bool"]).astype("float32")
+    return X, y
 
 
 def handle_update(iterations: int | None = None):
@@ -141,9 +186,58 @@ def handle_summary():
     return report_path
 
 
+def handle_incremental_cron(batch_size: int = BATCH_SIZE):
+    from config import DATA_FILE
+    from sklearn.linear_model import SGDClassifier
+    from sklearn.metrics import accuracy_score, f1_score
+    import pickle
+
+    state = _load_collector_state()
+    next_batch_index = int(state.get("next_batch_index", 0))
+
+    print(f"Incremental cron run: next_batch_index={next_batch_index}, batch_size={batch_size}")
+    batch = _get_batch_by_index(DATA_FILE, batch_size, next_batch_index)
+    if batch is None:
+        print("No more batches available in DATA_FILE. Stopping without update.")
+        return True
+
+    X, y = _prepare_incremental_xy(batch)
+    if X.shape[0] == 0 or X.shape[1] == 0:
+        print(f"Empty training matrix: X={X.shape}, y={y.shape}")
+        return False
+
+    INCREMENTAL_MODEL_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+    if INCREMENTAL_MODEL_FILE.exists():
+        with open(INCREMENTAL_MODEL_FILE, "rb") as f:
+            model = pickle.load(f)
+        print(f"Loaded incremental model from {INCREMENTAL_MODEL_FILE}")
+    else:
+        model = SGDClassifier(loss="log_loss", random_state=42)
+        print("Initialized new incremental model (SGDClassifier)")
+
+    model.partial_fit(X, y, classes=[0, 1])
+
+    y_pred = model.predict(X)
+    acc = accuracy_score(y, y_pred)
+    f1 = f1_score(y, y_pred, average="weighted")
+    print(f"Batch metrics: acc={acc:.3f}, f1={f1:.3f}, X_shape={X.shape}")
+
+    with open(INCREMENTAL_MODEL_FILE, "wb") as f:
+        pickle.dump(model, f)
+    print(f"Incremental model saved to {INCREMENTAL_MODEL_FILE}")
+
+    state["next_batch_index"] = next_batch_index + 1
+    state["run_count"] = int(state.get("run_count", 0)) + 1
+    state["last_run_utc"] = datetime.now(timezone.utc).isoformat()
+    _save_collector_state(state)
+    print(f"Collector state saved to {COLLECTOR_STATE_FILE}")
+    return True
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-mode", required=True, choices=["inference", "update", "summary"])
+    parser.add_argument("-mode", required=True, choices=["inference", "update", "summary", "incremental_cron"])
     parser.add_argument("-file", default=None)
     parser.add_argument("-iterations", type=int, default=None, help="Training iterations for Neural Net (max_iter)")
     args = parser.parse_args()
@@ -159,6 +253,10 @@ def main():
     if args.mode == "summary":
         out = handle_summary()
         return 0 if out is not None else 1
+
+    if args.mode == "incremental_cron":
+        ok = handle_incremental_cron(batch_size=BATCH_SIZE)
+        return 0 if ok else 1
 
 
 if __name__ == "__main__":

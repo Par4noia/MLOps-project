@@ -3,6 +3,8 @@ __pycache__/
 logs/
 data/processed/
 models/versions/*.pkl
+models/serving/incremental_model.pkl
+data/metadata/collector_state.json
 
 # Keep essential project files
 !README.md
