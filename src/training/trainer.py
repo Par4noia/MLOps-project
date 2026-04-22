@@ -13,9 +13,9 @@ def train_decision_tree(X_train, y_train):
     model.fit(X_train, y_train)
     return model
 
-def train_neural_net(X_train, y_train):
+def train_neural_net(X_train, y_train, max_iter: int = 100):
     print("Training neural network...")
-    model = MLPClassifier(hidden_layer_sizes=(10,), max_iter=100, random_state=42)
+    model = MLPClassifier(hidden_layer_sizes=(10,), max_iter=max_iter, random_state=42)
     model.fit(X_train, y_train)
     print("Neural network trained.")
     return model

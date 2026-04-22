@@ -14,7 +14,7 @@ from src.summary import generate_summary_report
 MODEL_METRICS_FILE = REPORT_DIR / "model_metrics.json"
 
 
-def handle_update():
+def handle_update(iterations: int | None = None):
     from config import DATA_FILE
     if not RAW_FILE.exists():
         print(f"raw file not found, collecting data...")
@@ -42,7 +42,9 @@ def handle_update():
     print(f"Training data shape: {X_train.shape}, Test data shape: {X_test.shape}")
     
     dt_model = train_decision_tree(X_train, y_train)
-    nn_model = train_neural_net(X_train, y_train)
+    nn_iters = iterations if iterations is not None else 100
+    print(f"Neural Net iterations (max_iter): {nn_iters}")
+    nn_model = train_neural_net(X_train, y_train, max_iter=nn_iters)
     
     dt_cv_results = cross_validate_model(dt_model, X_train, y_train)
     nn_cv_results = cross_validate_model(nn_model, X_train, y_train)
@@ -143,10 +145,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-mode", required=True, choices=["inference", "update", "summary"])
     parser.add_argument("-file", default=None)
+    parser.add_argument("-iterations", type=int, default=None, help="Training iterations for Neural Net (max_iter)")
     args = parser.parse_args()
 
     if args.mode == "update":
-        ok = handle_update()
+        ok = handle_update(iterations=args.iterations)
         return 0 if ok else 1
 
     if args.mode == "inference":

@@ -1,0 +1,49 @@
+name: mlops-iterative-train
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  train-once:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TRAIN_ITERATIONS: "50" # iterations are defined in YAML for this workflow
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Train (single run, iterative)
+        id: train
+        shell: bash
+        env:
+          PYTHONUTF8: "1"
+        run: |
+          set -euo pipefail
+          mkdir -p logs
+          LOG_FILE="logs/train_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}.log"
+          : > "${LOG_FILE}"
+          echo "log_file=${LOG_FILE}" >> "${GITHUB_OUTPUT}"
+          echo "TRAIN_ITERATIONS=${TRAIN_ITERATIONS}" | tee -a "${LOG_FILE}"
+          python -u run.py -mode update -iterations "${TRAIN_ITERATIONS}" 2>&1 | tee -a "${LOG_FILE}"
+
+      - name: Upload logs artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs
+          path: ${{ steps.train.outputs.log_file }}
